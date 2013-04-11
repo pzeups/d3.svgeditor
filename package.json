@@ -1,0 +1,24 @@
+{
+  "name": "d3.svgeditor",
+  "version": "0.0.1",
+  "description": "D3 svgeditor",
+  "keywords": [
+    "dom",
+    "w3c",
+    "svg",
+    "editor"
+  ],
+  "homepage": "https://github.com/lightux/d3.svgeditor/",
+  "author": {
+    "name": "Pierre Corre",
+    "url": ""
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lightux/d3.svgeditor.git"
+  },
+  "dependencies": {
+    "uglify-js": "latest",
+    "less": "latest"
+  }
+}
