@@ -3,6 +3,8 @@ d3.svgeditor
 
 D3 SVG editor is a plugin for [D3.js](http://d3js.org) technology to provide a embedded SVG edition tool. 
 
+![alt text](http://d3svgeditor.lightjs.org/img/d3.svgeditor.png "Logo Title Text 1")
+
 ## How to use:
 
 ```sh
