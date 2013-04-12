@@ -8,8 +8,8 @@ var radius = 3;
 var induration = 100;
 var outduration = 400;
 colorbrewer[theme][nbshape].sort(function(a,b) { return Math.random()-.5; })
-var width = parseInt(d3.select("#render").style('width'));
-var height = parseInt(d3.select("#render").style('height'));
+var width = parseInt(d3.select("#render").style('width'), 10);
+var height = parseInt(d3.select("#render").style('height'), 10);
 var symbols = d3.range(nbshape).map(function(i) {
   return {
     x: margin+(Math.random()*(width-margin*2)),
@@ -26,18 +26,30 @@ var symbols = d3.range(nbshape).map(function(i) {
 //var y = d3.scale.linear().range([height, 0]);
 
 function display() {
-    var width = parseInt(d3.select("#render").style('width'));
-    var height = parseInt(d3.select("#render").style('height'));
-    console.log(width)
+    var width = parseInt(d3.select("#render").style('width'), 10);
+    var height = parseInt(d3.select("#render").style('height'), 10);
+    
     function dragstart(d,i) { 
       d.moved = true;
       d3.select(this).select('path').attr("fill", d3.rgb(d.color)); 
     }
     
     function dragmove(d,i) {
-      d.x = Math.max(margin, Math.min(width-margin, d3.event.x));
-      d.y = Math.max(margin, Math.min(height-margin, d3.event.y));
-      d3.select('.symbol-'+i).attr("transform", "translate(" + d.x + "," + d.y + ")");
+        var selection = d3.selectAll('g.symbol.selected');
+        
+        if( selection[0].indexOf(this)==-1) {
+            selection.classed("selected", false);
+            selection = d3.select(this);
+            selection.classed("selected", true);
+        } 
+    
+        selection.attr("transform", function( d, i) {
+            d.x += d3.event.dx;
+            d.y += d3.event.dy;
+            return "translate(" + [ d.x,d.y ] + ")"
+        })
+        this.parentNode.appendChild(this);
+        d3.event.sourceEvent.stopPropagation();
     }
     
     function dragend(d,i) {
@@ -87,7 +99,76 @@ function display() {
     var render = d3.select('#render').selectAll('.render').data([0]).enter()
         .append('svg')
           .attr('class', 'render')
-          
+    
+    render
+    .on( "mousedown", function() {
+        if( !d3.event.ctrlKey) d3.selectAll( '.selected').classed( "selected", false);
+        var p = d3.mouse( this);
+        render.append( "rect")
+            .attr({
+                rx      : 6,
+                ry      : 6,
+                class   : "selection",
+                x       : p[0],
+                y       : p[1],
+                width   : 0,
+                height  : 0
+            })
+    })
+    .on( "mousemove", function() {
+        var s = render.select( "rect.selection");
+    
+        if( !s.empty()) {
+            var p = d3.mouse( this),
+                d = {
+                    x: parseInt( s.attr( "x"), 10),
+                    y: parseInt( s.attr( "y"), 10),
+                    width: parseInt( s.attr( "width"), 10),
+                    height: parseInt( s.attr( "height"), 10)
+                },
+                move = {
+                    x : p[0] - d.x,
+                    y : p[1] - d.y
+                }
+            ;
+    
+            if( move.x < 1 || (move.x*2<d.width)) {
+                d.x = p[0];
+                d.width -= move.x;
+            } else d.width = move.x;
+    
+            if( move.y < 1 || (move.y*2<d.height)) {
+                d.y = p[1];
+                d.height -= move.y;
+            } else d.height = move.y;
+           
+            s.attr(d);
+            render.selectAll('.selected').classed( "selected", false);
+            render.selectAll('.backgorund.selected').classed( "selected", false);
+            //d3.selectAll('rect.background').style('opacity', 10e-6)
+            
+            render.selectAll('rect.background').each( function( d2, i) {
+                var bbox = d2.bbox,
+                    x = d2.x+bbox.x,
+                    y = d2.y+bbox.y;
+                
+                if( !d3.select(this).classed("selected") && x>=d.x && x+bbox.width<=d.x+d.width && y>=d.y && y+bbox.height<=d.y+d.height ) {
+                    d3.select(this).classed("selected", true);
+                    d3.select(this.parentNode).classed("selection", true).classed("selected", true);
+                    d3.select(this.parentNode.parentNode).classed("selected", true);
+                }
+            });
+        }
+    })
+    .on( "mouseup", function() { deselect(); })
+    .on( "mouseout", function() {
+        if( d3.event.relatedTarget && d3.event.relatedTarget.tagName == 'HTML' ) deselect();
+    });
+    
+    function deselect() {
+        render.selectAll( "rect.selection").remove();
+        d3.selectAll( '.selection').classed( "selection", false);
+    }
     /*d3.select('#render').selectAll('.render')
             .attr('width', width)
             .attr('height', height);*/
@@ -104,22 +185,23 @@ function display() {
         .on("dragend", dragend);
     
     var renderEnter = render.selectAll('.symbol').data(symbols).enter()
-      .append('g').attr('class', function(d,i) { return 'symbol-'+i })
+      .append('g').attr('class', function(d,i) { return 'symbol symbol-'+i })
         .on('mouseover', function(d,i) { 
           if( !d.moved && !d.resized ) {
             if( d.timeout ) clearTimeout(d.timeout);
             d.selected = true;
             d3.select(this).select('path').transition().duration(induration).attr("fill", d3.rgb(d.color).brighter())
-            d3.select(this).selectAll('rect, circle').transition().duration(induration).style('opacity', 1)
+            d3.select(this).selectAll('rect, circle').transition().duration(induration).style('opacity', 1).each('end', function() { d3.select(this).style('opacity', '').classed('selected', true) })
           }
         })
         .on('mouseout', function(d,i) { 
           if( !d.moved && !d.resized ) {
             var obj = d3.select(this);
             d.timeout = setTimeout(function() {
-              d.selected = false;
-              obj.select('path').transition().duration(outduration).attr("fill", 'white')
-              obj.selectAll('rect, circle').transition().duration(outduration).style('opacity', 1e-6)
+                if( obj.classed("selected") && obj.select('.background').classed("selected") ) return;
+                d.selected = false;
+                obj.select('path').transition().duration(outduration).attr("fill", 'white')
+                obj.selectAll('rect, circle').transition().duration(outduration).style('opacity', 1e-6).each('end', function() { d3.select(this).style('opacity', '').classed('selected', false) })
             }, 300)
           }
         })
@@ -144,12 +226,12 @@ function display() {
     
     backgroundEnter
       .append('rect')
+        .attr('class', 'background')
         .attr('width', function(d) { return d.bbox.width })
         .attr('height', function(d) { return d.bbox.height })
         .attr('x', function(d) { return d.bbox.x }).attr('y', function(d) { return d.bbox.y })
         .attr('fill', 'transparent')
         .attr('stroke', function(d) { return d.color; })
-        .style('opacity', 1e-6)
     
     var adrag = d3.behavior.drag()
       .origin(function(d) { return d; })
@@ -177,7 +259,7 @@ function display() {
         return anchors;
       }).enter()
         .append('circle')
-          .attr('class', function(d,i) { return 'anchor-'+i })
+          .attr('class', function(d,i) { return 'anchor anchor-'+i })
           .attr('r', radius)
           .attr('cx', function(d) { return d.x })
           .attr('cy', function(d) { return d.y })
@@ -194,7 +276,7 @@ function display() {
               .attr('r', radius)
           })
           .call(adrag)
-          .style('opacity', 1e-6)
+          //.style('opacity', 1e-6)
 }
 
 display();
