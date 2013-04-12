@@ -1,13 +1,14 @@
 
 var nbshape = 8;
-var theme = 'Spectral';
+var themes = ['Set1','Set2','Set3'];
 var margin = 100;
 var type = d3.scale.ordinal().range(d3.svg.symbolTypes);
 var bbpadding = 4;
 var radius = 3;
 var induration = 100;
 var outduration = 400;
-colorbrewer[theme][nbshape].sort(function(a,b) { return Math.random()-.5; })
+var colors = d3.merge(themes.map(function(t) { return colorbrewer[t][nbshape] }))
+colors.sort(function(a,b) { return Math.random()-.5; })
 var width = parseInt(d3.select("#render").style('width'), 10);
 var height = parseInt(d3.select("#render").style('height'), 10);
 var symbols = d3.range(nbshape).map(function(i) {
@@ -15,8 +16,8 @@ var symbols = d3.range(nbshape).map(function(i) {
     x: margin+(Math.random()*(width-margin*2)),
     y: margin+(Math.random()*(height-margin*2)),
     size: Math.random()*5000+500,
-    color: colorbrewer[theme][nbshape][i],
-    type: type(i),
+    color: colors[i],
+    type: superformulaTypes[i],
     selected: false,
     timeout: false
   };
@@ -213,7 +214,7 @@ function display() {
         .attr("stroke", function(d) { return d.color; })
         .attr('stroke-width', 2+'px')
         .attr("fill", 'white')
-        .attr("d", function(d) { return d3.svg.symbol().type(d.type).size(d.size)(); })
+        .attr("d", function(d) { return superformula().type(d.type).size(d.size)(); })
         .each(function(d,i) {
           var bbox = d3.select(this)[0][0].getBBox()
           d.bbox = {
