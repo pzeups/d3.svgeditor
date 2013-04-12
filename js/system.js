@@ -3,13 +3,13 @@ var nbshape = 8;
 var theme = 'Spectral';
 var margin = 100;
 var type = d3.scale.ordinal().range(d3.svg.symbolTypes);
-var width = parseInt(d3.select("#render").style('width'));
-var height = parseInt(d3.select("#render").style('height'));
 var bbpadding = 4;
 var radius = 3;
 var induration = 100;
 var outduration = 400;
 colorbrewer[theme][nbshape].sort(function(a,b) { return Math.random()-.5; })
+var width = parseInt(d3.select("#render").style('width'));
+var height = parseInt(d3.select("#render").style('height'));
 var symbols = d3.range(nbshape).map(function(i) {
   return {
     x: margin+(Math.random()*(width-margin*2)),
@@ -26,6 +26,9 @@ var symbols = d3.range(nbshape).map(function(i) {
 //var y = d3.scale.linear().range([height, 0]);
 
 function display() {
+    var width = parseInt(d3.select("#render").style('width'));
+    var height = parseInt(d3.select("#render").style('height'));
+    console.log(width)
     function dragstart(d,i) { 
       d.moved = true;
       d3.select(this).select('path').attr("fill", d3.rgb(d.color)); 
@@ -81,10 +84,13 @@ function display() {
       d3.select(this).select('path').attr("fill", 'white');
     }
     
-    var render = d3.select('#render').append('svg')
-      .attr('class', 'render')
-      .attr('width', width)
-      .attr('height', height);
+    var render = d3.select('#render').selectAll('.render').data([0]).enter()
+        .append('svg')
+          .attr('class', 'render')
+          
+    /*d3.select('#render').selectAll('.render')
+            .attr('width', width)
+            .attr('height', height);*/
     
     render.selectAll('.header').data([0]).enter().append('text')
         .attr('transform', 'translate(20,40)')
@@ -92,10 +98,10 @@ function display() {
         .text('d3.svgeditor');
     
     var drag = d3.behavior.drag()
-      .origin(function(d) { return d; })
-      .on("dragstart", dragstart)
-      .on("drag", dragmove)
-      .on("dragend", dragend);
+        .origin(function(d) { return d; })
+        .on("dragstart", dragstart)
+        .on("drag", dragmove)
+        .on("dragend", dragend);
     
     var renderEnter = render.selectAll('.symbol').data(symbols).enter()
       .append('g').attr('class', function(d,i) { return 'symbol-'+i })
@@ -192,3 +198,10 @@ function display() {
 }
 
 display();
+
+windowResize = function(resize, erase){
+    var oldresize = erase ? null : window.onresize;
+    window.onresize = function(e) { if (typeof oldresize == 'function') oldresize(e); resize(e); }
+}
+
+windowResize(function() { display(); }, true);
