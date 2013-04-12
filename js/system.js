@@ -1,17 +1,18 @@
 
-var nbshape = 8;
-var themes = ['Set1','Set2','Set3'];
+var nbcolors = 6;
+var nbshapes = 8; //superformulaTypes.length;
+var themes = ['Set1','Set2','Set3','Accent'];
 var margin = 100;
 var type = d3.scale.ordinal().range(d3.svg.symbolTypes);
 var bbpadding = 4;
 var radius = 3;
 var induration = 100;
 var outduration = 400;
-var colors = d3.merge(themes.map(function(t) { return colorbrewer[t][nbshape] }))
+var colors = d3.merge(themes.map(function(t) { return colorbrewer[t][nbcolors] }))
 colors.sort(function(a,b) { return Math.random()-.5; })
 var width = parseInt(d3.select("#render").style('width'), 10);
 var height = parseInt(d3.select("#render").style('height'), 10);
-var symbols = d3.range(nbshape).map(function(i) {
+var symbols = d3.range(nbshapes).map(function(i) {
   return {
     x: margin+(Math.random()*(width-margin*2)),
     y: margin+(Math.random()*(height-margin*2)),
@@ -65,14 +66,23 @@ function display() {
     
     function adragmove(d,i) {
       var anchors = d.anchors;
-      var b = d3.select('.background-'+d.num);
+      var b = d3.select(this.parentNode);
       
-      d3.select(this).attr("cx", d.x = d3.event.x).attr("cy", d.y = d3.event.y)
+      //d3.select(this).attr("cx", d.x += d3.event.dx).attr("cy", d.y += d3.event.dy)
     
-      if( i==0 ) { // top-left
-        b.select('.anchor-1').attr('cy', anchors[1].y = d.y)
-        b.select('.anchor-2').attr('cx', anchors[2].x = d.x)
-      }
+    // if left top
+    /*var xdir = [-1,+1,+1,-1]
+    var ydir = [-1,-1,+1,+1]
+    // if right top
+    var xdir = [-1,+1,+1,-1]
+    var ydir = [-1,-1,+1,+1]*/
+    var dx = i%2 == 0 ? 1 : -1;
+      //if( i==0 ) { // top-left
+    b.select('.anchor-0').attr('cx', anchors[0].x += dx*d3.event.dx).attr('cy', anchors[0].y += d3.event.dy)
+    b.select('.anchor-1').attr('cx', anchors[1].x -= dx*d3.event.dx).attr('cy', anchors[1].y += d3.event.dy)
+    b.select('.anchor-2').attr('cx', anchors[2].x += dx*d3.event.dx).attr('cy', anchors[2].y -= d3.event.dy)
+    b.select('.anchor-3').attr('cx', anchors[3].x -= dx*d3.event.dx).attr('cy', anchors[3].y -= d3.event.dy)
+     /* }
       else if( i==1 ) { // top-right
         b.select('.anchor-0').attr('cy', anchors[0].y = d.y)
         b.select('.anchor-3').attr('cx', anchors[3].x = d.x)
@@ -84,12 +94,16 @@ function display() {
       else if( i==3 ) { // bottom-right
         b.select('.anchor-2').attr('cy', anchors[2].y = d.y)
         b.select('.anchor-1').attr('cx', anchors[1].x = d.x)
-      }
+      }*/
+      
+      var width = Math.abs(anchors[1].x-anchors[0].x);
+      var height = Math.abs(anchors[1].y-anchors[2].y);
       
       b.select('rect')
-        .attr('width', Math.abs(anchors[1].x-anchors[0].x))
-        .attr('height', Math.abs(anchors[1].y-anchors[2].y))
+        .attr('width', width)
+        .attr('height', height)
         .attr('x', anchors[0].x).attr('y', anchors[0].y)
+      d3.select(this.parentNode.parentNode).select('path').attr('transform', 'scale('+Math.abs((anchors[1].x-anchors[0].x)/d.parent.bbox.width)+','+Math.abs((anchors[1].y-anchors[2].y)/d.parent.bbox.height)+')')
     }
     
     function adragend(d,i) {
@@ -97,74 +111,75 @@ function display() {
       d3.select(this).select('path').attr("fill", 'white');
     }
     
-    var render = d3.select('#render').selectAll('.render').data([0]).enter()
+    d3.select('#render').selectAll('.render').data([0]).enter()
         .append('svg')
           .attr('class', 'render')
     
+    var render = d3.select('#render').selectAll('.render')
     render
-    .on( "mousedown", function() {
-        if( !d3.event.ctrlKey) d3.selectAll( '.selected').classed( "selected", false);
-        var p = d3.mouse( this);
-        render.append( "rect")
-            .attr({
-                rx      : 6,
-                ry      : 6,
-                class   : "selection",
-                x       : p[0],
-                y       : p[1],
-                width   : 0,
-                height  : 0
-            })
-    })
-    .on( "mousemove", function() {
-        var s = render.select( "rect.selection");
-    
-        if( !s.empty()) {
-            var p = d3.mouse( this),
-                d = {
-                    x: parseInt( s.attr( "x"), 10),
-                    y: parseInt( s.attr( "y"), 10),
-                    width: parseInt( s.attr( "width"), 10),
-                    height: parseInt( s.attr( "height"), 10)
-                },
-                move = {
-                    x : p[0] - d.x,
-                    y : p[1] - d.y
-                }
-            ;
-    
-            if( move.x < 1 || (move.x*2<d.width)) {
-                d.x = p[0];
-                d.width -= move.x;
-            } else d.width = move.x;
-    
-            if( move.y < 1 || (move.y*2<d.height)) {
-                d.y = p[1];
-                d.height -= move.y;
-            } else d.height = move.y;
-           
-            s.attr(d);
-            render.selectAll('.selected').classed( "selected", false);
-            render.selectAll('.backgorund.selected').classed( "selected", false);
-            //d3.selectAll('rect.background').style('opacity', 10e-6)
-            
-            render.selectAll('rect.background').each( function( d2, i) {
-                var bbox = d2.bbox,
-                    x = d2.x+bbox.x,
-                    y = d2.y+bbox.y;
+        .on( "mousedown", function() {
+            if( !d3.event.ctrlKey) d3.selectAll( '.selected').classed( "selected", false);
+            var p = d3.mouse( this);
+            render.append( "rect")
+                .attr({
+                    rx      : 6,
+                    ry      : 6,
+                    class   : "selection",
+                    x       : p[0],
+                    y       : p[1],
+                    width   : 0,
+                    height  : 0
+                })
+        })
+        .on( "mousemove", function() {
+            var s = render.select( "rect.selection");
+        
+            if( !s.empty()) {
+                var p = d3.mouse( this),
+                    d = {
+                        x: parseInt( s.attr( "x"), 10),
+                        y: parseInt( s.attr( "y"), 10),
+                        width: parseInt( s.attr( "width"), 10),
+                        height: parseInt( s.attr( "height"), 10)
+                    },
+                    move = {
+                        x : p[0] - d.x,
+                        y : p[1] - d.y
+                    }
+                ;
+        
+                if( move.x < 1 || (move.x*2<d.width)) {
+                    d.x = p[0];
+                    d.width -= move.x;
+                } else d.width = move.x;
+        
+                if( move.y < 1 || (move.y*2<d.height)) {
+                    d.y = p[1];
+                    d.height -= move.y;
+                } else d.height = move.y;
+               
+                s.attr(d);
+                render.selectAll('.selected').classed( "selected", false);
+                render.selectAll('.backgorund.selected').classed( "selected", false);
+                //d3.selectAll('rect.background').style('opacity', 10e-6)
                 
-                if( !d3.select(this).classed("selected") && x>=d.x && x+bbox.width<=d.x+d.width && y>=d.y && y+bbox.height<=d.y+d.height ) {
-                    d3.select(this).classed("selected", true);
-                    d3.select(this.parentNode).classed("selection", true).classed("selected", true);
-                    d3.select(this.parentNode.parentNode).classed("selected", true);
-                }
-            });
-        }
-    })
-    .on( "mouseup", function() { deselect(); })
-    .on( "mouseout", function() {
-        if( d3.event.relatedTarget && d3.event.relatedTarget.tagName == 'HTML' ) deselect();
-    });
+                render.selectAll('rect.background').each( function( d2, i) {
+                    var bbox = d2.bbox,
+                        x = d2.x+bbox.x,
+                        y = d2.y+bbox.y;
+                    
+                    if( !d3.select(this).classed("selected") && x>=d.x && x+bbox.width<=d.x+d.width && y>=d.y && y+bbox.height<=d.y+d.height ) {
+                        d3.select(this).classed("selected", true);
+                        d3.select(this.parentNode).classed("selection", true).classed("selected", true);
+                        d3.select(this.parentNode.parentNode).classed("selected", true);
+                    }
+                });
+            }
+        })
+        .on( "mouseup", function() { deselect(); })
+        .on( "mouseout", function() {
+            if( d3.event.relatedTarget && d3.event.relatedTarget.tagName == 'HTML' ) deselect();
+        });
     
     function deselect() {
         render.selectAll( "rect.selection").remove();
@@ -214,6 +229,7 @@ function display() {
         .attr("stroke", function(d) { return d.color; })
         .attr('stroke-width', 2+'px')
         .attr("fill", 'white')
+        .attr("vector-effect", "non-scaling-stroke")
         .attr("d", function(d) { return superformula().type(d.type).size(d.size)(); })
         .each(function(d,i) {
           var bbox = d3.select(this)[0][0].getBBox()
@@ -250,20 +266,21 @@ function display() {
           {x: p.bbox.x+p.bbox.width, y: p.bbox.y+p.bbox.height} // bottom-right
         ];
         var parent = p;
-        anchors = anchors.map(function(d) {
+        var range = d3.range(4).map(function(i) {
+          var d = {};
           d.parent = parent;
           d.anchors = anchors;
           d.color = p.color;
           d.num = i;
           return d;
-        })
-        return anchors;
+        });
+        return range;
       }).enter()
         .append('circle')
           .attr('class', function(d,i) { return 'anchor anchor-'+i })
           .attr('r', radius)
-          .attr('cx', function(d) { return d.x })
-          .attr('cy', function(d) { return d.y })
+          .attr('cx', function(d,i) { return d.anchors[i].x })
+          .attr('cy', function(d,i) { return d.anchors[i].y })
           .attr('stroke', function(d) { return d.color; })
           .attr('fill', 'white')
           .on('mouseover', function(d) { 
